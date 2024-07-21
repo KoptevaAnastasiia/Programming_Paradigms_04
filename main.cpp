@@ -2,10 +2,30 @@
 #include <string>
 #include <fstream>
 #include <dlfcn.h>
+#include <cstring>
 
 class Data {
     std::string content;
+    size_t  Size = 256;
 public:
+
+    char* inputFile = new char[Size];
+    char* outputFile = new char[Size];
+    int shift;
+
+    Data() {
+        inputFile[0] = '\0';
+        outputFile[0] = '\0';
+    }
+
+    ~Data() {
+        delete[] inputFile;
+        delete[] outputFile;
+    }
+
+
+
+
     bool Content(const std::string& inputFile) {
         if (!loadTextFromFile(inputFile)) {
             printf("error\n");
@@ -113,12 +133,12 @@ public:
 
 class TextEditor {
 public:
-    void text(std::string& operation, std::string& inputFile, std::string& outputFile, int& shift) {
+    void text(char* operation, char* inputFile, char* outputFile, int& shift) {
 
         std::cout << "e/d: ";
         std::cin >> operation;
 
-        if (operation != "E" && operation != "D" && operation != "d" && operation != "e") {
+        if (strcmp(operation, "E") != 0 && strcmp(operation, "D") != 0 && strcmp(operation, "e") != 0 && strcmp(operation, "d") != 0) {
             printf("no\n");
             return;
         }
@@ -134,28 +154,35 @@ public:
     }
 };
 
+class Text {
+private:
+
+
+};
+
+
+
 int main() {
-    TextEditor editor;
-
-    std::string operation;
-
-    std::string inputFile;
-    std::string outputFile;
-
-    int shift;
-
-    editor.text(operation, inputFile, outputFile, shift);
 
     Data data;
-    data.Content(inputFile);
+
+
+    TextEditor editor;
+
+    int Size_operation = 10;
+    char *operation = (char *)malloc(Size_operation * sizeof(char));
+
+    editor.text(operation, data.inputFile, data.outputFile, data.shift);
+
+    data.Content(data.inputFile);
 
     CaesarCipher cipher;
-    if (!cipher.Point(data.getContent(), operation[0], shift)) {
+    if (!cipher.Point(data.getContent(), operation[0], data.shift)) {
         std::cerr << "Failed to process content" << std::endl;
         return 1;
     }
 
-    if (!data.saveTextToFile(outputFile)) {
+    if (!data.saveTextToFile(data.outputFile)) {
         std::cerr << "Failed to save content to file" << std::endl;
         return 1;
     }
@@ -165,5 +192,8 @@ int main() {
 
 
 
+//     /home/anastasiia/Documents/abc1256.txt
 
-//     /home/anastasiia/Documents/abc1.txt
+
+
+

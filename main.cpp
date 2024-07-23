@@ -3,70 +3,111 @@
 #include <fstream>
 #include <dlfcn.h>
 #include <cstring>
+#include <fcntl.h>
+#include <unistd.h>
 
 class Data {
-    std::string content;
-    size_t  Size = 256;
+
 public:
+    size_t  Size = 256;
+
+    char* content = new char[Size];
 
     char* inputFile = new char[Size];
     char* outputFile = new char[Size];
     int shift;
 
+
+
     Data() {
         inputFile[0] = '\0';
         outputFile[0] = '\0';
+
+        content[0] = '\0';
+
     }
 
     ~Data() {
         delete[] inputFile;
         delete[] outputFile;
+        delete[] content;
     }
 
-
-
-
-    bool Content(const std::string& inputFile) {
+    bool Content(const char* inputFile) {
         if (!loadTextFromFile(inputFile)) {
             printf("error\n");
-         } else {
+            return false;
+        } else {
             printf("good\n");
         }
         return true;
     }
 
-    bool loadTextFromFile(const std::string& filePath) {
-        std::ifstream inFile(filePath);
+
+    bool loadTextFromFile(const char* inputFile) {
+        std::ifstream inFile(inputFile);
         if (!inFile) {
             return false;
         }
 
         std::string line;
+        size_t currentLength = 0;
+
         while (std::getline(inFile, line)) {
-            content += line + "\n";
+            size_t lineLength = line.length() + 1; // +1 для \n
+            if (currentLength + lineLength >= Size) {
+                Size *= 2;
+                char* newContent = new char[Size];
+                std::memcpy(newContent, content, currentLength);
+                delete[] content;
+                content = newContent;
+            }
+
+
+            std::strcpy(content + currentLength, line.c_str());
+            currentLength += lineLength;
+            content[currentLength - 1] = '\n';
         }
 
         inFile.close();
         return true;
     }
 
-    bool saveTextToFile(const std::string& filePath) const {
-        std::ofstream outFile(filePath);
-        if (!outFile) {
+    bool saveTextToFile(const char* filePath, const char* content) const {
+        int out_File = open(filePath, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+        if (out_File == -1) {
             return false;
         }
 
-        outFile << content;
-        outFile.close();
+        ssize_t bytesWritten = write(out_File, content, strlen(content));
+        if (bytesWritten == -1) {
+            close(out_File);
+            return false;
+        }
+
+        if (close(out_File) == -1) {
+            return false;
+        }
+
         return true;
     }
 
-    std::string& getContent() {
+
+
+
+
+    char* getContent() {
         return content;
     }
 
-    void setContent(const std::string& newContent) {
-        content = newContent;
+    void setContent(const char* newContent) {
+        size_t newContentLength = std::strlen(newContent);
+        if (newContentLength >= Size) {
+            delete[] content;
+            Size = newContentLength + 1;
+            content = new char[Size];
+        }
+        std::strcpy(content, newContent);
     }
     /////////
 };
@@ -134,7 +175,6 @@ public:
 class TextEditor {
 public:
     void text(char* operation, char* inputFile, char* outputFile, int& shift) {
-
         std::cout << "e/d: ";
         std::cin >> operation;
 
@@ -154,45 +194,48 @@ public:
     }
 };
 
-class Text {
-private:
-
-
-};
-
-
-
 int main() {
-
     Data data;
-
-
     TextEditor editor;
 
     int Size_operation = 10;
-    char *operation = (char *)malloc(Size_operation * sizeof(char));
+    char *operation = new char[Size_operation];
 
     editor.text(operation, data.inputFile, data.outputFile, data.shift);
 
-    data.Content(data.inputFile);
+    if (!data.Content(data.inputFile)) {
+        std::cerr << "Failed to load content from file" << std::endl;
+        delete[] operation;
+        return 1;
+    }
 
     CaesarCipher cipher;
-    if (!cipher.Point(data.getContent(), operation[0], data.shift)) {
+    std::string contentStr = data.getContent();
+    if (!cipher.Point(contentStr, operation[0], data.shift)) {
         std::cerr << "Failed to process content" << std::endl;
+        delete[] operation;
         return 1;
     }
 
-    if (!data.saveTextToFile(data.outputFile)) {
+    data.setContent(contentStr.c_str());
+
+    if (!data.saveTextToFile(data.outputFile, data.content)) {
         std::cerr << "Failed to save content to file" << std::endl;
+        delete[] operation;
         return 1;
     }
 
+    delete[] operation;
     return 0;
 }
 
 
 
-//     /home/anastasiia/Documents/abc1256.txt
+// /home/anastasiia/Documents/abc1256.txt
+
+
+
+
 
 
 
